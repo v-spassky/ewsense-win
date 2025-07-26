@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Check code formatting
+      run: dotnet format ewsense.sln --verify-no-changes --verbosity diagnostic
+
+    - name: Run tests
+      run: dotnet test
+
+    - name: Build
+      run: dotnet build
