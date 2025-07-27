@@ -7,14 +7,14 @@ namespace ewsense.keyboard;
 
 public class KeyboardListener : IDisposable
 {
-    private const int WH_KEYBOARD_LL = 13;
-    private const int WM_KEYDOWN = 0x0100;
+    private const int WhKeyboardLl = 13;
+    private const int WmKeydown = 0x0100;
 
     private readonly WindowsApi.LowLevelKeyboardProc _proc;
     private IntPtr _hookId = IntPtr.Zero;
     private string _typedText = "";
     private readonly KeywordRepository _keywordRepository;
-    private bool _disposed = false;
+    private bool _disposed;
 
     public event Action? KeywordDetected;
 
@@ -32,50 +32,48 @@ public class KeyboardListener : IDisposable
         }
     }
 
-    public void StopListening()
+    private void StopListening()
     {
-        if (_hookId != IntPtr.Zero)
-        {
-            WindowsApi.UnhookWindowsHookEx(_hookId);
-            _hookId = IntPtr.Zero;
-        }
+        if (_hookId == IntPtr.Zero)
+            return;
+
+        WindowsApi.UnhookWindowsHookEx(_hookId);
+        _hookId = IntPtr.Zero;
     }
 
-    private IntPtr SetHook(WindowsApi.LowLevelKeyboardProc proc)
+    private static IntPtr SetHook(WindowsApi.LowLevelKeyboardProc proc)
     {
-        using (Process curProcess = Process.GetCurrentProcess())
-        using (ProcessModule? curModule = curProcess.MainModule)
-        {
-            return WindowsApi.SetWindowsHookEx(
-                WH_KEYBOARD_LL,
-                proc,
-                WindowsApi.GetModuleHandle(curModule?.ModuleName ?? ""),
-                0
-            );
-        }
+        using var curProcess = Process.GetCurrentProcess();
+        using var curModule = curProcess.MainModule;
+        return WindowsApi.SetWindowsHookEx(
+            WhKeyboardLl,
+            proc,
+            WindowsApi.GetModuleHandle(curModule?.ModuleName ?? ""),
+            0
+        );
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam == WM_KEYDOWN)
+        if (nCode < 0 || wParam != WmKeydown)
+            return WindowsApi.CallNextHookEx(_hookId, nCode, wParam, lParam);
+
+        var vkCode = Marshal.ReadInt32(lParam);
+        var keyChar = WindowsApi.GetCharFromKey(vkCode);
+
+        if (keyChar.Length == 1 && (char.IsLetterOrDigit(keyChar[0]) || keyChar[0] == ' '))
         {
-            var vkCode = Marshal.ReadInt32(lParam);
-            var keyChar = WindowsApi.GetCharFromKey(vkCode);
+            _typedText += keyChar;
 
-            if (keyChar.Length == 1 && (char.IsLetterOrDigit(keyChar[0]) || keyChar[0] == ' '))
-            {
-                _typedText += keyChar;
+            if (!_keywordRepository.HasKeywordEndingWith(_typedText))
+                return WindowsApi.CallNextHookEx(_hookId, nCode, wParam, lParam);
 
-                if (_keywordRepository.HasKeywordEndingWith(_typedText))
-                {
-                    KeywordDetected?.Invoke();
-                    _typedText = "";
-                }
-            }
-            else if (vkCode == 8 && _typedText.Length > 0) // Backspace
-            {
-                _typedText = _typedText.Substring(0, _typedText.Length - 1);
-            }
+            KeywordDetected?.Invoke();
+            _typedText = "";
+        }
+        else if (vkCode == 8 && _typedText.Length > 0) // Backspace
+        {
+            _typedText = _typedText[..^1];
         }
 
         return WindowsApi.CallNextHookEx(_hookId, nCode, wParam, lParam);

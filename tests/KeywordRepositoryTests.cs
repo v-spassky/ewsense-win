@@ -32,7 +32,7 @@ public class KeywordRepositoryTests
     [TestMethod]
     public void AddKeyword_EmptyKeyword_ShouldNotAdd()
     {
-        int initialCount = _repository!.Keywords.Count;
+        var initialCount = _repository!.Keywords.Count;
         _repository.AddKeyword("");
         _repository.AddKeyword("   ");
 

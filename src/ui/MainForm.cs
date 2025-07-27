@@ -62,37 +62,37 @@ public class MainForm : Form
 
     private void KeywordTextBox_KeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.KeyCode == Keys.Enter)
-        {
-            AddButton_Click(sender, e);
-            e.Handled = true;
-        }
+        if (e.KeyCode != Keys.Enter)
+            return;
+
+        AddButton_Click(sender, e);
+        e.Handled = true;
     }
 
     private void KeywordListBox_KeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.KeyCode == Keys.Delete)
-        {
-            RemoveButton_Click(sender, e);
-            e.Handled = true;
-        }
+        if (e.KeyCode != Keys.Delete)
+            return;
+
+        RemoveButton_Click(sender, e);
+        e.Handled = true;
     }
 
     private void AddButton_Click(object? sender, EventArgs e)
     {
-        if (!string.IsNullOrWhiteSpace(_keywordTextBox.Text))
-        {
-            _keywordManager.AddKeyword(_keywordTextBox.Text.Trim());
-            _keywordTextBox.Clear();
-        }
+        if (string.IsNullOrWhiteSpace(_keywordTextBox.Text))
+            return;
+
+        _keywordManager.AddKeyword(_keywordTextBox.Text.Trim());
+        _keywordTextBox.Clear();
     }
 
     private void RemoveButton_Click(object? sender, EventArgs e)
     {
-        if (_keywordListBox.SelectedItem != null)
-        {
-            _keywordManager.RemoveKeyword(_keywordListBox.SelectedItem.ToString()!);
-        }
+        if (_keywordListBox.SelectedItem == null)
+            return;
+
+        _keywordManager.RemoveKeyword(_keywordListBox.SelectedItem.ToString()!);
     }
 
     private void OnKeywordsChanged()
@@ -110,7 +110,7 @@ public class MainForm : Form
     private void RefreshKeywordList()
     {
         _keywordListBox.Items.Clear();
-        foreach (string keyword in _keywordManager.Keywords)
+        foreach (var keyword in _keywordManager.Keywords)
         {
             _keywordListBox.Items.Add(keyword);
         }

@@ -2,23 +2,23 @@ using ewsense.winapi;
 
 namespace ewsense.ui;
 
-public class Popup
+public static class Popup
 {
-    public void ShowKeywordDetectedPopup()
+    public static void ShowKeywordDetectedPopup()
     {
-        Point caretPos = WindowsApi.GetCaretPosition();
+        var caretPos = WindowsApi.GetCaretPosition();
 
-        Form popup = new Form
+        var popup = new Form
         {
             Size = new Size(200, 100),
             FormBorderStyle = FormBorderStyle.None,
             BackColor = Color.LightYellow,
             StartPosition = FormStartPosition.Manual,
-            Location = new Point(caretPos.X, caretPos.Y + 5),
+            Location = caretPos with { Y = caretPos.Y + 5 },
             TopMost = true
         };
 
-        Label message = new Label
+        var message = new Label
         {
             Text = "Keyword detected!",
             AutoSize = true,
@@ -29,9 +29,9 @@ public class Popup
         popup.Controls.Add(message);
         popup.Show();
 
-        System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+        var timer = new System.Windows.Forms.Timer();
         timer.Interval = 2000;
-        timer.Tick += (sender, e) =>
+        timer.Tick += (_, _) =>
         {
             timer.Stop();
             timer.Dispose();

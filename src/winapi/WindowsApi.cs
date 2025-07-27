@@ -6,14 +6,14 @@ namespace ewsense.winapi;
 public static class WindowsApi
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct Point
+    private struct Point
     {
         public int X;
         public int Y;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct GuiThreadInfo
+    private struct GuiThreadInfo
     {
         public uint cbSize;
         public uint flags;
@@ -27,7 +27,7 @@ public static class WindowsApi
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct Rect
+    private struct Rect
     {
         public int Left;
         public int Top;
@@ -38,55 +38,60 @@ public static class WindowsApi
     public delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+    internal static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+    internal static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+    internal static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
-    public static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[] lpKeyState,
-        [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pwszBuff, int cchBuff, uint wFlags, IntPtr dwhkl);
+    private static extern int ToUnicodeEx(
+        uint wVirtKey,
+        uint wScanCode,
+        byte[] lpKeyState,
+        [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pwszBuff,
+        int cchBuff,
+        uint wFlags,
+        IntPtr dwhkl
+    );
 
     [DllImport("user32.dll")]
-    public static extern bool GetKeyboardState(byte[] lpKeyState);
+    private static extern bool GetKeyboardState(byte[] lpKeyState);
 
     [DllImport("user32.dll")]
-    public static extern bool GetGUIThreadInfo(uint idThread, ref GuiThreadInfo lpgui);
+    private static extern bool GetGUIThreadInfo(uint idThread, ref GuiThreadInfo lpgui);
 
     [DllImport("user32.dll")]
-    public static extern bool ClientToScreen(IntPtr hWnd, ref Point lpPoint);
+    private static extern bool ClientToScreen(IntPtr hWnd, ref Point lpPoint);
 
     [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern IntPtr GetModuleHandle(string lpModuleName);
+    internal static extern IntPtr GetModuleHandle(string lpModuleName);
 
     public static string GetCharFromKey(int vkCode)
     {
-        byte[] keyState = new byte[256];
+        var keyState = new byte[256];
         GetKeyboardState(keyState);
 
-        StringBuilder sb = new StringBuilder(2);
-        if (ToUnicodeEx((uint)vkCode, 0, keyState, sb, sb.Capacity, 0, IntPtr.Zero) == 1)
-        {
-            return sb.ToString();
-        }
-        return "";
+        var sb = new StringBuilder(2);
+        return ToUnicodeEx((uint)vkCode, 0, keyState, sb, sb.Capacity, 0, IntPtr.Zero) == 1
+            ? sb.ToString()
+            : "";
     }
 
     public static System.Drawing.Point GetCaretPosition()
     {
-        GuiThreadInfo guiInfo = new GuiThreadInfo();
+        var guiInfo = new GuiThreadInfo();
         guiInfo.cbSize = (uint)Marshal.SizeOf(guiInfo);
 
         if (GetGUIThreadInfo(0, ref guiInfo) && guiInfo.hwndCaret != IntPtr.Zero)
         {
-            Point caretPoint = new Point
+            var caretPoint = new Point
             {
                 X = guiInfo.rcCaret.Left,
                 Y = guiInfo.rcCaret.Bottom
@@ -98,13 +103,14 @@ public static class WindowsApi
             }
         }
 
-        IntPtr foregroundWindow = GetForegroundWindow();
-        if (foregroundWindow != IntPtr.Zero)
-        {
-            System.Drawing.Point mousePoint = Control.MousePosition;
-            return new System.Drawing.Point(mousePoint.X, mousePoint.Y + 20);
-        }
+        var foregroundWindow = GetForegroundWindow();
+        if (foregroundWindow == IntPtr.Zero)
+            return new System.Drawing.Point(
+                Screen.PrimaryScreen?.Bounds.Width - 220 ?? 800,
+                Screen.PrimaryScreen?.Bounds.Height - 120 ?? 600
+            );
 
-        return new System.Drawing.Point(Screen.PrimaryScreen?.Bounds.Width - 220 ?? 800, Screen.PrimaryScreen?.Bounds.Height - 120 ?? 600);
+        var mousePoint = Control.MousePosition;
+        return mousePoint with { Y = mousePoint.Y + 20 };
     }
 }
